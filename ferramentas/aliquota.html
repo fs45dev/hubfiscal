@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Alíquota de ISS e Crédito de ICMS • Simples Nacional</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --paper:#EEF1F6;
+        --ink:#13223E;
+        --ink-soft:#57678A;
+        --line:#D9E0EA;
+        --card:#FFFFFF;
+        --brass:#B0842A;
+        --brass-dark:#8A6A22;
+        --brass-bg:#FBF3E3;
+        --teal:#0E6659;
+        --teal-dark:#0A4C42;
+        --teal-bg:#E7F3F0;
+        --amber-bg:#FFF7E7;
+        --amber-border:#EFD495;
+        --amber-text:#8A5F12;
+        --red:#B3432B;
+        --red-bg:#FBEAE6;
+    }
+    body{
+        font-family:'Inter',system-ui,sans-serif;
+        background-color:var(--paper);
+        background-image:
+            linear-gradient(rgba(19,34,62,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(19,34,62,0.035) 1px, transparent 1px);
+        background-size: 28px 28px;
+        color:var(--ink);
+    }
+    .font-display{ font-family:'Fraunces', serif; }
+    .font-mono{ font-family:'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+
+    .ledger-card{
+        background:var(--card);
+        border:1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: 0 1px 2px rgba(19,34,62,0.04), 0 18px 40px -22px rgba(19,34,62,0.25);
+    }
+    .ledger-divider{ border-top:1px dashed var(--line); }
+
+    .input-fiscal{
+        transition: all .15s ease;
+        background:#FBFCFE;
+    }
+    .input-fiscal:focus{
+        outline:none;
+        border-color:var(--teal);
+        background:#fff;
+        box-shadow: 0 0 0 3px rgba(14,102,89,0.12);
+    }
+    .input-fiscal.error{ border-color: var(--red) !important; background:var(--red-bg); }
+
+    select.input-fiscal{ appearance:none; -webkit-appearance:none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2357678A' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat:no-repeat; background-position: right 14px center; background-size:18px; }
+
+    .btn-primary{
+        background: linear-gradient(180deg, #123A63, #0E2C4B);
+        box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 24px -12px rgba(14,44,75,0.7);
+        transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 14px 28px -12px rgba(14,44,75,0.75); }
+    .btn-primary:active{ transform: translateY(0); }
+
+    .chip{
+        border:1px solid var(--line);
+        background:#fff;
+        transition: all .15s ease;
+    }
+    .chip:hover{ border-color: var(--teal); color:var(--teal-dark); background:var(--teal-bg); }
+
+    .tooltip {
+        position: absolute; background: var(--ink); color: white; padding: 10px 14px;
+        border-radius: 10px; font-size: 12px; max-width: 270px; z-index: 50;
+        box-shadow: 0 10px 25px -8px rgba(0,0,0,0.35); opacity: 0; visibility: hidden;
+        transition: all 0.15s ease; line-height:1.45;
+    }
+    .group:hover .tooltip { opacity: 1; visibility: visible; }
+    .info-icon { color: #9AA7C2; transition: color 0.2s; }
+    .info-icon:hover { color: var(--teal); }
+
+    #resultado{ animation: fadeSlideUp 0.45s ease forwards; }
+    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Selo fiscal — elemento de assinatura */
+    .selo{
+        position:relative;
+        width:172px; height:172px;
+        margin: 4px auto 0;
+        border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        transform: rotate(-4deg);
+        color:var(--teal-dark);
+    }
+    .selo::before{
+        content:"";
+        position:absolute; inset:0;
+        border-radius:50%;
+        border:2.5px dashed rgba(14,102,89,0.55);
+    }
+    .selo::after{
+        content:"";
+        position:absolute; inset:9px;
+        border-radius:50%;
+        border:1px solid rgba(14,102,89,0.35);
+    }
+    .selo-inner{ text-align:center; padding:0 14px; }
+    .selo-label{ font-size:9.5px; letter-spacing:.14em; font-weight:600; color:var(--teal-dark); opacity:.8; }
+    .selo-value{ font-size:26px; font-weight:700; line-height:1.05; margin-top:2px; }
+    .selo-sub{ font-size:8.5px; letter-spacing:.1em; color:var(--teal-dark); opacity:.65; margin-top:2px; }
+
+    .comp-bar{ height:10px; border-radius:999px; overflow:hidden; background:var(--line); display:flex; }
+    .comp-seg-iss{ background: var(--teal); }
+    .comp-seg-outros{ background:#B9C3D6; }
+
+    details > summary{ cursor:pointer; list-style:none; }
+    details > summary::-webkit-details-marker{ display:none; }
+    details[open] .chev{ transform: rotate(180deg); }
+    .chev{ transition: transform .2s ease; }
+
+    .ref-table th, .ref-table td{ padding: 7px 10px; white-space:nowrap; }
+    .ref-table tbody tr:nth-child(odd){ background:#FBFCFE; }
+    .ref-table .faixa-atual{ background: var(--teal-bg) !important; box-shadow: inset 3px 0 0 var(--teal); }
+
+    input::placeholder{ color:#B7C0D1; }
+</style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-2xl mx-auto px-4 py-10">
+
+        <!-- Cabeçalho -->
+        <div class="flex items-start justify-between mb-7">
+            <div class="flex items-center gap-x-3">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background:linear-gradient(160deg,#123A63,#0A2C4E);">
+                    <i class="fa-solid fa-stamp text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-display text-[26px] leading-tight font-semibold" style="color:var(--ink)">Alíquota de ISS</h1>
+                    <p class="text-[13px] text-slate-500 -mt-0.5">Fábio Gonzaga de Matos</p>
+                </div>
+            </div>
+            <div class="hidden sm:flex flex-col items-end text-right">
+                <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase">Base legal</span>
+                <span class="text-[11px] text-slate-500 leading-snug max-w-[150px]">LC 123/2006 · Res. CGSN 140/2018</span>
+            </div>
+        </div>
+
+        <!-- Formulário -->
+        <div class="ledger-card p-7">
+
+            <!-- Anexo -->
+            <div class="mb-5">
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Anexo do Simples Nacional *</label>
+                <select id="anexo" onchange="onAnexoChange()"
+                        class="input-fiscal w-full border border-slate-300 rounded-2xl px-4 py-3 text-sm">
+                    <option value="I">Anexo I — Comércio</option>
+                    <option value="II">Anexo II — Indústria</option>
+                    <option value="III" selected>Anexo III — Serviços em Geral</option>
+                    <option value="III-LOC">Anexo III — Locação de Bens Móveis</option>
+                    <option value="IV">Anexo IV — Construção, Vigilância, Limpeza e Advocacia</option>
+                    <option value="V">Anexo V — Serviços Intelectuais e Técnicos</option>
+                </select>
+                <p id="anexo-desc" class="text-xs text-slate-500 mt-1.5 leading-snug"></p>
+            </div>
+
+            <!-- RBT12 -->
+            <div class="mb-5">
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-x-2">
+                    RBT12 — Receita Bruta Acumulada (12 meses) *
+                    <div class="group relative">
+                        <i class="fa-solid fa-circle-info info-icon cursor-help"></i>
+                        <div class="tooltip left-1/2 -translate-x-1/2 bottom-full mb-2">
+                            Receita bruta total dos 12 meses anteriores ao mês de apuração.<br>
+                            <span class="text-blue-300">Onde encontrar:</span> extrato do PGDAS-D → campo "RBT12".
+                        </div>
+                    </div>
+                </label>
+                <div class="relative">
+                    <div class="absolute left-4 top-3.5 text-slate-400 text-sm font-mono">R$</div>
+                    <input type="text" id="rbt12" placeholder="0,00" inputmode="decimal"
+                           class="input-fiscal font-mono w-full border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-base"
+                           oninput="formatarInput(this); limparErro('rbt12')">
+                </div>
+                <p id="erro-rbt12" class="text-xs text-red-600 mt-1.5 hidden"></p>
+            </div>
+
+            <!-- Valor da operação — crédito de ICMS (Anexos I e II) -->
+            <div id="campo-operacao" class="mb-5 hidden">
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-x-2">
+                    Valor da operação (opcional) — crédito de ICMS
+                    <div class="group relative">
+                        <i class="fa-solid fa-circle-info info-icon cursor-help"></i>
+                        <div class="tooltip left-1/2 -translate-x-1/2 bottom-full mb-2">
+                            Valor da mercadoria na NF-e. Se informado, a ferramenta converte a alíquota de crédito em reais (vCredICMSSN).<br>
+                            A alíquota em si depende apenas do RBT12 e do anexo.
+                        </div>
+                    </div>
+                </label>
+                <div class="relative">
+                    <div class="absolute left-4 top-3.5 text-slate-400 text-sm font-mono">R$</div>
+                    <input type="text" id="operacao" placeholder="0,00 (opcional)" inputmode="decimal"
+                           class="input-fiscal font-mono w-full border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-base"
+                           oninput="formatarInput(this); limparErro('operacao')">
+                </div>
+                <p id="erro-operacao" class="text-xs text-red-600 mt-1.5 hidden"></p>
+            </div>
+
+            <!-- Folha de Salários -->
+            <div id="campo-folha" class="mb-5">
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-x-2">
+                    Folha de Salários (12 meses) — Fator R
+                    <div class="group relative">
+                        <i class="fa-solid fa-circle-info info-icon cursor-help"></i>
+                        <div class="tooltip left-1/2 -translate-x-1/2 bottom-full mb-2">
+                            Soma de salários + encargos previdenciários pagos nos últimos 12 meses.<br>
+                            Preencha apenas se a atividade estiver sujeita ao <strong>Fator R</strong> (art. 18, §5º-J, LC 123/2006). Deixe em branco se não se aplicar.
+                        </div>
+                    </div>
+                </label>
+                <div class="relative">
+                    <div class="absolute left-4 top-3.5 text-slate-400 text-sm font-mono">R$</div>
+                    <input type="text" id="folha" placeholder="0,00 (opcional)" inputmode="decimal"
+                           class="input-fiscal font-mono w-full border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-base"
+                           oninput="formatarInput(this); limparErro('folha')">
+                </div>
+                <p id="erro-folha" class="text-xs text-red-600 mt-1.5 hidden"></p>
+            </div>
+
+            <div class="flex gap-3 mt-2">
+                <button onclick="calcularTudo()"
+                        class="btn-primary flex-1 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-x-2">
+                    <i class="fa-solid fa-calculator"></i>
+                    <span>CALCULAR ALÍQUOTA</span>
+                </button>
+                <button onclick="limparTudo()"
+                        class="px-5 border border-slate-300 hover:bg-slate-50 text-slate-600 font-medium rounded-2xl text-sm">
+                    <i class="fa-solid fa-eraser"></i>
+                </button>
+            </div>
+
+            <!-- Exemplos -->
+            <div class="flex flex-wrap gap-2 mt-4">
+                <span class="text-xs text-slate-400 self-center mr-1">Exemplos:</span>
+                <button onclick="carregarExemplo('I')" class="chip text-xs px-3 py-1.5 rounded-full text-slate-600">Anexo I — crédito ICMS</button>
+                <button onclick="carregarExemplo('II')" class="chip text-xs px-3 py-1.5 rounded-full text-slate-600">Anexo II — crédito ICMS</button>
+                <button onclick="carregarExemplo('III')" class="chip text-xs px-3 py-1.5 rounded-full text-slate-600">Anexo III com Fator R</button>
+                <button onclick="carregarExemplo('IV')" class="chip text-xs px-3 py-1.5 rounded-full text-slate-600">Anexo IV</button>
+                <button onclick="carregarExemplo('V')" class="chip text-xs px-3 py-1.5 rounded-full text-slate-600">Anexo V</button>
+            </div>
+
+            <!-- Tabela de referência -->
+            <details class="mt-5 ledger-divider pt-4" id="ref-details">
+                <summary class="flex items-center justify-between text-sm font-semibold text-slate-600">
+                    <span><i class="fa-solid fa-table-list mr-1.5 text-slate-400"></i>Tabela oficial do anexo selecionado</span>
+                    <i class="fa-solid fa-chevron-down chev text-xs text-slate-400"></i>
+                </summary>
+                <div id="ref-content" class="mt-3 overflow-x-auto"></div>
+            </details>
+
+            <!-- Resultado -->
+            <div id="resultado" class="hidden mt-7 pt-6 ledger-divider">
+                <h3 class="font-semibold text-slate-800 mb-4 text-sm flex items-center gap-x-1.5">
+                    <i class="fa-solid fa-receipt text-slate-400"></i> Resultado da apuração
+                </h3>
+
+                <div class="space-y-3 text-sm">
+
+                    <div class="flex justify-between bg-slate-50 p-3 rounded-2xl">
+                        <span class="text-slate-600">Anexo utilizado</span>
+                        <span id="anexo-usado" class="font-semibold text-slate-900 text-right"></span>
+                    </div>
+
+                    <div id="fator-r-box" class="hidden bg-[var(--amber-bg)] border p-3 rounded-2xl text-xs leading-relaxed" style="border-color:var(--amber-border); color:var(--amber-text);">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-semibold flex items-center gap-x-1.5"><i class="fa-solid fa-scale-balanced"></i> Fator R</span>
+                            <span id="fator-r-valor" class="font-mono font-semibold"></span>
+                        </div>
+                        <p id="fator-r-nota"></p>
+                    </div>
+
+                    <div id="detalhe-faixa" class="grid grid-cols-3 gap-2 text-xs">
+                        <div class="border border-slate-200 rounded-xl p-2.5 text-center">
+                            <div class="text-slate-400 mb-0.5">Faixa</div>
+                            <div id="faixa-num" class="font-mono font-semibold text-slate-800"></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl p-2.5 text-center">
+                            <div class="text-slate-400 mb-0.5">Alíq. nominal</div>
+                            <div id="faixa-nominal" class="font-mono font-semibold text-slate-800"></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl p-2.5 text-center">
+                            <div class="text-slate-400 mb-0.5">Parc. a deduzir</div>
+                            <div id="faixa-deducao" class="font-mono font-semibold text-slate-800"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-3 border border-slate-200 rounded-2xl">
+                        <span class="text-slate-600">Alíquota efetiva total do DAS</span>
+                        <span id="aliquota-total" class="font-mono font-semibold text-slate-900"></span>
+                    </div>
+
+                    <!-- Barra de composição -->
+                    <div id="composicao-box">
+                        <div class="flex justify-between text-[11px] text-slate-500 mb-1.5">
+                            <span id="comp-label-principal"><i class="fa-solid fa-square text-[8px] mr-1" style="color:var(--teal)"></i>ISS</span>
+                            <span><i class="fa-solid fa-square text-[8px] mr-1" style="color:#B9C3D6"></i>Demais tributos</span>
+                        </div>
+                        <div class="comp-bar">
+                            <div id="comp-iss" class="comp-seg-iss"></div>
+                            <div id="comp-outros" class="comp-seg-outros"></div>
+                        </div>
+                    </div>
+
+                    <!-- Selo -->
+                    <div class="pt-2 pb-1">
+                        <div class="selo">
+                            <div class="selo-inner">
+                                <div id="selo-label" class="selo-label">ALÍQUOTA EFETIVA</div>
+                                <div id="aliquota-iss" class="selo-value font-mono">—</div>
+                                <div id="selo-sub" class="selo-sub">ISS · NFS-e</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="icms-credito-box" class="hidden rounded-2xl p-3.5 text-sm" style="background:var(--teal-bg); border:1px solid rgba(14,102,89,0.18);">
+                        <div class="flex justify-between items-baseline gap-3">
+                            <span class="text-[var(--teal-dark)] font-semibold">Crédito de ICMS gerável no RBT12</span>
+                            <span id="icms-valor-rbt12" class="font-mono font-semibold text-[var(--teal-dark)]"></span>
+                        </div>
+                        <div id="icms-valor-operacao-linha" class="hidden justify-between items-baseline gap-3 mt-1.5 pt-1.5" style="border-top:1px dashed rgba(14,102,89,0.25);">
+                            <span class="text-[var(--teal-dark)]">Crédito nesta operação (vCredICMSSN)</span>
+                            <span id="icms-valor-operacao" class="font-mono font-semibold text-[var(--teal-dark)]"></span>
+                        </div>
+                    </div>
+
+                    <div id="observacoes" class="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl leading-relaxed space-y-1.5"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <p class="text-[11px] text-slate-400 text-center mt-5 leading-relaxed px-4">
+            Ferramenta de apoio para fins de estimativa, com base na Resolução CGSN nº 140/2018 (Anexos III, IV e V).
+            Não substitui a apuração oficial pelo PGDAS-D nem a validação por um contador habilitado.
+            O crédito de ICMS dos Anexos I e II segue o art. 23 da LC 123/2006 e a partilha dos Anexos I e II da mesma Resolução: {[(RBT12 × alíquota nominal) − parcela a deduzir] / RBT12} × percentual de ICMS da faixa.
+        </p>
+    </div>
+
+    <script>
+        // ---------- Tabelas oficiais (Resolução CGSN nº 140/2018, Anexos I a V) ----------
+        const LIMITES = [180000, 360000, 720000, 1800000, 3600000, 4800000];
+
+        const tabelas = {
+            'I': {
+                nome: 'Anexo I — Comércio',
+                desc: 'Comércio varejista e atacadista. A alíquota é composta por IRPJ, CSLL, Cofins, PIS/Pasep, CPP e ICMS — não há incidência de ISS neste anexo.',
+                alq: [4.00, 7.30, 9.50, 10.70, 14.30, 19.00],
+                ded: [0, 5940, 13860, 22500, 87300, 378000],
+                icms: [34.00, 34.00, 33.50, 33.50, 33.50, 0],
+                fatorR: false, semISS: true, temICMS: true
+            },
+            'II': {
+                nome: 'Anexo II — Indústria',
+                desc: 'Indústria (fabricação, beneficiamento, transformação). Além dos tributos do Anexo I, inclui o IPI — também sem incidência de ISS.',
+                alq: [4.50, 7.80, 10.00, 11.20, 14.70, 30.00],
+                ded: [0, 5940, 13860, 22500, 85500, 720000],
+                icms: [32.00, 32.00, 32.00, 32.00, 32.00, 0],
+                fatorR: false, semISS: true, temICMS: true
+            },
+            'III': {
+                nome: 'Anexo III — Serviços em Geral',
+                desc: 'Instalação, reparos, manutenção, agências de viagem, escritórios de contabilidade e demais atividades do inciso III do art. 18 (ou do inciso V, quando o Fator R ≥ 28%).',
+                alq: [6.00, 11.20, 13.50, 16.00, 21.00, 33.00],
+                ded: [0, 9360, 17640, 35640, 125640, 648000],
+                iss: [33.5, 32.0, 32.5, 32.5, 33.5, 0],
+                fatorR: true, semISS: false
+            },
+            'III-LOC': {
+                nome: 'Anexo III — Locação de Bens Móveis',
+                desc: 'Locação de máquinas, equipamentos e veículos. Não há incidência de ISS: a locação de bens móveis não é considerada prestação de serviço para esse fim (entendimento consolidado do STF).',
+                alq: [6.00, 11.20, 13.50, 16.00, 21.00, 33.00],
+                ded: [0, 9360, 17640, 35640, 125640, 648000],
+                iss: [33.5, 32.0, 32.5, 32.5, 33.5, 0],
+                fatorR: false, semISS: true
+            },
+            'IV': {
+                nome: 'Anexo IV — Construção, Vigilância, Limpeza e Advocacia',
+                desc: 'Construção de imóveis e obras de engenharia, vigilância, limpeza/conservação e serviços advocatícios. A CPP (INSS patronal) não integra o DAS — é recolhida à parte via GPS/DCTFWeb.',
+                alq: [4.50, 9.00, 10.20, 14.00, 22.00, 33.00],
+                ded: [0, 8100, 12420, 39780, 183780, 828000],
+                iss: [44.5, 40.0, 40.0, 40.0, 40.0, 0],
+                fatorR: false, semISS: false
+            },
+            'V': {
+                nome: 'Anexo V — Serviços Intelectuais e Técnicos',
+                desc: 'Medicina, odontologia, advocacia, engenharia, arquitetura, TI, publicidade e demais atividades do inciso V — aplicável quando o Fator R for inferior a 28%.',
+                alq: [15.50, 18.00, 19.50, 20.50, 23.00, 30.50],
+                ded: [0, 4500, 9900, 17100, 62100, 540000],
+                iss: [14.0, 17.0, 19.0, 21.0, 23.5, 0],
+                fatorR: true, semISS: false
+            }
+        };
+
+        const descSemISS = {
+            'I': 'Comércio varejista e atacadista. A alíquota é composta por IRPJ, CSLL, Cofins, PIS/Pasep, CPP e ICMS — não há incidência de ISS neste anexo.',
+            'II': 'Indústria (fabricação, beneficiamento, transformação). Além dos tributos do Anexo I, inclui o IPI — também sem incidência de ISS.'
+        };
+
+        // ---------- Utilitários ----------
+        function formatarInput(input) {
+            let v = input.value.replace(/\D/g, '');
+            if (!v) { input.value = ''; return; }
+            v = (parseInt(v) / 100).toFixed(2);
+            input.value = parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        }
+
+        function converterNumero(valor) {
+            if (!valor) return 0;
+            return parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0;
+        }
+
+        function fmtPct(v){ return v.toFixed(2).replace('.', ',') + '%'; }
+        function fmtMoeda(v){ return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+        function encontrarFaixa(rbt12) {
+            for (let i = 0; i < LIMITES.length; i++) {
+                if (rbt12 <= LIMITES[i]) return i;
+            }
+            return 5;
+        }
+
+        function limparErro(campo){
+            const el = document.getElementById('erro-' + campo);
+            el.classList.add('hidden');
+            document.getElementById(campo).classList.remove('error');
+        }
+
+        function mostrarErro(campo, msg){
+            const el = document.getElementById('erro-' + campo);
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            document.getElementById(campo).classList.add('error');
+        }
+
+        // ---------- Interface: Anexo ----------
+        function onAnexoChange(){
+            const anexo = document.getElementById('anexo').value;
+            const campoFolha = document.getElementById('campo-folha');
+            const descEl = document.getElementById('anexo-desc');
+
+            const fatorRAplica = (anexo === 'III' || anexo === 'V');
+            campoFolha.classList.toggle('hidden', !fatorRAplica);
+            if (!fatorRAplica) document.getElementById('folha').value = '';
+
+            const temICMS = (anexo === 'I' || anexo === 'II');
+            document.getElementById('campo-operacao').classList.toggle('hidden', !temICMS);
+            if (!temICMS) document.getElementById('operacao').value = '';
+
+            if (tabelas[anexo]) {
+                descEl.textContent = tabelas[anexo].desc;
+            } else {
+                descEl.textContent = descSemISS[anexo] || '';
+            }
+
+            renderTabelaReferencia(anexo);
+            document.getElementById('resultado').classList.add('hidden');
+        }
+
+        function renderTabelaReferencia(anexo, faixaAtual){
+            const container = document.getElementById('ref-content');
+            if (!tabelas[anexo]) {
+                container.innerHTML = `<p class="text-xs text-slate-500 p-2">${descSemISS[anexo] || 'Anexo sem tabela de ISS aplicável.'}</p>`;
+                return;
+            }
+            const tab = tabelas[anexo];
+            const faixasLabel = ['Até 180 mil','180 a 360 mil','360 a 720 mil','720 mil a 1,8 mi','1,8 a 3,6 mi','3,6 a 4,8 mi'];
+            const colunaPartilha = tab.temICMS ? '% ICMS' : '% ISS';
+            let rows = '';
+            for (let i = 0; i < 6; i++){
+                const ativa = (faixaAtual === i) ? 'faixa-atual' : '';
+                const partilha = tab.temICMS
+                    ? (tab.icms[i] ? tab.icms[i].toFixed(2).replace('.', ',') + '%' : '—')
+                    : (tab.semISS ? '—' : (tab.iss[i] ? tab.iss[i].toFixed(1).replace('.', ',') + '%' : '—'));
+                rows += `<tr class="${ativa}">
+                    <td class="text-slate-500">${i+1}ª</td>
+                    <td class="text-slate-600">${faixasLabel[i]}</td>
+                    <td class="font-mono text-right">${tab.alq[i].toFixed(2).replace('.', ',')}%</td>
+                    <td class="font-mono text-right">${tab.ded[i] ? fmtMoeda(tab.ded[i]) : '—'}</td>
+                    <td class="font-mono text-right">${partilha}</td>
+                </tr>`;
+            }
+            const notaRodape = tab.temICMS
+                ? 'Crédito de ICMS transferível ao adquirente não optante = alíquota efetiva × percentual de ICMS da faixa (art. 23 da LC 123/2006). Na 6ª faixa o ICMS sai do DAS; para a parcela até o sublimite usa-se a fórmula da 5ª faixa.'
+                : 'O percentual efetivo de ISS é sempre limitado a 5%; eventual excedente é redistribuído entre os tributos federais, sem alterar o valor total do DAS.';
+            container.innerHTML = `
+                <table class="ref-table w-full text-xs border border-slate-200 rounded-xl overflow-hidden">
+                    <thead class="bg-slate-50 text-slate-500">
+                        <tr>
+                            <th class="text-left">Faixa</th>
+                            <th class="text-left">RBT12</th>
+                            <th class="text-right">Alíq. nominal</th>
+                            <th class="text-right">Deduzir</th>
+                            <th class="text-right">${colunaPartilha}</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <p class="text-[10.5px] text-slate-400 mt-2 leading-snug">${notaRodape}</p>
+            `;
+        }
+
+        // ---------- Cálculo principal ----------
+        function calcularTudo() {
+            limparErro('rbt12'); limparErro('folha'); limparErro('operacao');
+            document.getElementById('resultado').classList.add('hidden');
+
+            const anexoSel = document.getElementById('anexo').value;
+            const rbt12 = converterNumero(document.getElementById('rbt12').value);
+            const folha = converterNumero(document.getElementById('folha').value);
+            const operacao = converterNumero(document.getElementById('operacao').value);
+
+            if (!rbt12 || rbt12 <= 0) {
+                mostrarErro('rbt12', 'Informe a Receita Bruta Acumulada dos últimos 12 meses.');
+                return;
+            }
+            if (folha > rbt12) {
+                mostrarErro('folha', 'A folha de salários não pode ser maior que o RBT12.');
+                return;
+            }
+
+            // Anexos I e II — sem ISS; crédito de ICMS apurado sobre o RBT12
+            if (anexoSel === 'I' || anexoSel === 'II') {
+                calcularCreditoICMS(anexoSel, rbt12, operacao);
+                return;
+            }
+
+            const faixa = encontrarFaixa(rbt12);
+            renderTabelaReferencia(anexoSel, faixa);
+
+            // Fator R (somente Anexo III <-> V, quando folha informada)
+            let anexoFinal = anexoSel;
+            let fatorR = null;
+            let notaFatorR = '';
+            if ((anexoSel === 'III' || anexoSel === 'V') && folha > 0) {
+                fatorR = (folha / rbt12) * 100;
+                if (anexoSel === 'III' && fatorR < 28) {
+                    anexoFinal = 'V';
+                    notaFatorR = `Fator R de <strong>${fmtPct(fatorR)}</strong>, abaixo de 28%. A atividade é reclassificada para o <strong>Anexo V</strong>, conforme art. 18, §5º-J da LC 123/2006.`;
+                } else if (anexoSel === 'V' && fatorR >= 28) {
+                    anexoFinal = 'III';
+                    notaFatorR = `Fator R de <strong>${fmtPct(fatorR)}</strong>, igual ou superior a 28%. A empresa pode ser tributada pelo <strong>Anexo III</strong>, mais vantajoso.`;
+                } else {
+                    notaFatorR = `Fator R de <strong>${fmtPct(fatorR)}</strong>. A empresa permanece no ${anexoSel === 'III' ? 'Anexo III' : 'Anexo V'}.`;
+                }
+            }
+
+            const tab = tabelas[anexoFinal];
+            const aliqNominal = tab.alq[faixa];
+            const deducao = tab.ded[faixa];
+
+            let alqTotal = ((rbt12 * (aliqNominal / 100)) - deducao) / rbt12 * 100;
+            if (alqTotal < 0) alqTotal = 0;
+
+            let alqISS = 0;
+            let notaCap = '';
+            let notaSublimite = '';
+
+            if (tab.semISS) {
+                const issPct = tab.iss[faixa];
+                alqTotal = alqTotal * (1 - issPct / 100);
+                alqISS = 0;
+            } else {
+                const issPct = tab.iss[faixa];
+                const bruto = alqTotal * (issPct / 100);
+                if (bruto > 5) {
+                    alqISS = 5;
+                    notaCap = 'O percentual de ISS apurado superou o teto legal de 5% e foi limitado a esse valor; a diferença é redistribuída entre os tributos federais, sem alterar o total do DAS.';
+                } else {
+                    alqISS = bruto;
+                }
+            }
+
+            if (faixa === 5) {
+                notaSublimite = 'Nesta faixa (acima de R$ 3.600.000,00) o ISS deixa de compor o DAS e passa a ser recolhido diretamente ao município, conforme a regra do sublimite estadual/municipal.';
+            }
+            if (rbt12 > 4800000) {
+                notaSublimite += (notaSublimite ? ' ' : '') + 'Atenção: a receita bruta informada ultrapassa o teto do Simples Nacional (R$ 4.800.000,00) — verifique possível exclusão do regime.';
+            }
+
+            renderizarResultado({
+                anexoSel, anexoFinal, tab, faixa, aliqNominal, deducao,
+                alqTotal, alqISS, fatorR, notaFatorR, notaCap, notaSublimite, semISS: tab.semISS
+            });
+        }
+
+        // Crédito de ICMS (Anexos I e II) — art. 23 da LC 123/2006 e Anexos I/II da Res. CGSN 140/2018
+        // Alíquota de crédito = {[(RBT12 × alíquota nominal) − parcela a deduzir] / RBT12} × % ICMS da faixa
+        function calcularCreditoICMS(anexoSel, rbt12, operacao) {
+            const tab = tabelas[anexoSel];
+            const faixa = encontrarFaixa(rbt12);
+            renderTabelaReferencia(anexoSel, faixa);
+
+            const aliqNominal = tab.alq[faixa];
+            const deducao = tab.ded[faixa];
+            let alqTotal = ((rbt12 * (aliqNominal / 100)) - deducao) / rbt12 * 100;
+            if (alqTotal < 0) alqTotal = 0;
+
+            let alqICMS = 0;
+            let notaSublimite = '';
+            let usouFormula5a = false;
+
+            if (faixa < 5) {
+                alqICMS = alqTotal * (tab.icms[faixa] / 100);
+            } else {
+                // 6ª faixa: ICMS não compõe o DAS. Para a parcela que não ultrapassa o sublimite,
+                // a nota do anexo manda usar os parâmetros da 5ª faixa.
+                const aliq5 = tab.alq[4];
+                const ded5 = tab.ded[4];
+                const icms5 = tab.icms[4];
+                alqICMS = ((rbt12 * (aliq5 / 100)) - ded5) / rbt12 * icms5;
+                if (alqICMS < 0) alqICMS = 0;
+                usouFormula5a = true;
+                notaSublimite = 'Na 6ª faixa o ICMS deixa de compor o DAS (percentual de partilha igual a zero) e passa a ser recolhido diretamente ao Estado quando a receita supera o sublimite. Para a parcela que não ultrapassa o sublimite, o percentual efetivo de ICMS — e o crédito transferível relativo a essa parcela — segue a nota do anexo: {[(RBT12 × alíquota da 5ª faixa) − parcela a deduzir da 5ª faixa] / RBT12} × % ICMS da 5ª faixa.';
+            }
+
+            if (rbt12 > 4800000) {
+                notaSublimite += (notaSublimite ? ' ' : '') + 'Atenção: a receita bruta informada ultrapassa o teto do Simples Nacional (R$ 4.800.000,00) — verifique possível exclusão do regime.';
+            }
+
+            const valorNoRBT12 = rbt12 * (alqICMS / 100);
+            const valorOperacao = operacao > 0 ? operacao * (alqICMS / 100) : null;
+
+            renderizarCreditoICMS({
+                tab, faixa, aliqNominal, deducao, alqTotal, alqICMS,
+                valorNoRBT12, valorOperacao, operacao, notaSublimite, usouFormula5a,
+                icmsFaixa: faixa < 5 ? tab.icms[faixa] : tab.icms[4]
+            });
+        }
+
+        function renderizarCreditoICMS(d) {
+            const resultado = document.getElementById('resultado');
+            resultado.classList.remove('hidden');
+            reanimar(resultado);
+
+            document.getElementById('detalhe-faixa').classList.remove('hidden');
+            document.getElementById('fator-r-box').classList.add('hidden');
+            document.getElementById('anexo-usado').textContent = d.tab.nome;
+
+            document.getElementById('faixa-num').textContent = (d.faixa + 1) + 'ª';
+            document.getElementById('faixa-nominal').textContent = d.aliqNominal.toFixed(2).replace('.', ',') + '%';
+            document.getElementById('faixa-deducao').textContent = d.deducao ? fmtMoeda(d.deducao) : '—';
+
+            document.getElementById('aliquota-total').textContent = d.alqTotal.toFixed(6).replace('.', ',') + '%';
+            document.getElementById('aliquota-iss').textContent = d.alqICMS.toFixed(6).replace('.', ',') + '%';
+            document.getElementById('selo-label').textContent = 'CRÉDITO DE ICMS';
+            document.getElementById('selo-sub').textContent = 'NF-e · pCredSN';
+
+            document.getElementById('comp-label-principal').innerHTML = '<i class="fa-solid fa-square text-[8px] mr-1" style="color:var(--teal)"></i>ICMS (crédito)';
+            if (!d.usouFormula5a && d.alqTotal > 0) {
+                document.getElementById('composicao-box').classList.remove('hidden');
+                const pct = Math.min(100, (d.alqICMS / d.alqTotal) * 100);
+                document.getElementById('comp-iss').style.width = pct + '%';
+                document.getElementById('comp-outros').style.width = (100 - pct) + '%';
+            } else {
+                document.getElementById('composicao-box').classList.add('hidden');
+            }
+
+            document.getElementById('icms-credito-box').classList.remove('hidden');
+            document.getElementById('icms-valor-rbt12').textContent = fmtMoeda(d.valorNoRBT12);
+            const linhaOp = document.getElementById('icms-valor-operacao-linha');
+            if (d.valorOperacao !== null) {
+                linhaOp.classList.remove('hidden');
+                linhaOp.classList.add('flex');
+                document.getElementById('icms-valor-operacao').textContent = fmtMoeda(d.valorOperacao);
+            } else {
+                linhaOp.classList.add('hidden');
+                linhaOp.classList.remove('flex');
+            }
+
+            const obs = [];
+            obs.push(`<p><i class="fa-solid fa-circle-info mr-1"></i>${d.tab.desc}</p>`);
+            obs.push(`<p>Alíquota de crédito = alíquota efetiva (${d.alqTotal.toFixed(6).replace('.', ',')}%) × ${d.icmsFaixa.toFixed(2).replace('.', ',')}% de ICMS da ${d.usouFormula5a ? '5ª faixa (nota do anexo)' : 'faixa'}. Esse percentual é o que pode ser informado no campo pCredSN da NF-e (CSOSN 101 ou 201) e aproveitado pelo adquirente não optante pelo Simples Nacional, nos termos do art. 23 da LC 123/2006.</p>`);
+            obs.push(`<p>O valor de R$ ${d.valorNoRBT12.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})} é o ICMS correspondente ao RBT12 informado — referência do crédito gerável no período de 12 meses se toda a receita fosse de circulação de mercadorias tributada. Não é o DAS a recolher.</p>`);
+            if (d.valorOperacao !== null) {
+                obs.push(`<p>Sobre a operação de ${fmtMoeda(d.operacao)}, o crédito transferível (vCredICMSSN) é ${fmtMoeda(d.valorOperacao)}.</p>`);
+            } else {
+                obs.push('<p>Informe o valor da operação para converter a alíquota no crédito em reais da NF-e (vCredICMSSN).</p>');
+            }
+            if (d.notaSublimite) obs.push(`<p>${d.notaSublimite}</p>`);
+            obs.push('<p>O crédito não é aproveitado pela própria optante, nem transferido a outro optante do Simples Nacional. O IPI do Anexo II não gera crédito transferível.</p>');
+            document.getElementById('observacoes').innerHTML = obs.join('');
+        }
+
+        function renderizarSemISS(anexo, rbt12){
+            const resultado = document.getElementById('resultado');
+            resultado.classList.remove('hidden');
+            reanimar(resultado);
+
+            document.getElementById('anexo-usado').textContent = anexo === 'I' ? 'Anexo I — Comércio' : 'Anexo II — Indústria';
+            document.getElementById('fator-r-box').classList.add('hidden');
+            document.getElementById('detalhe-faixa').classList.add('hidden');
+            document.getElementById('composicao-box').classList.add('hidden');
+
+            document.getElementById('aliquota-total').textContent = '—';
+            document.getElementById('aliquota-iss').textContent = '—';
+            document.getElementById('selo-label').textContent = 'ALÍQUOTA EFETIVA';
+            document.getElementById('selo-sub').textContent = 'ISS · NFS-e';
+            document.getElementById('icms-credito-box').classList.add('hidden');
+            document.getElementById('observacoes').innerHTML = `<p>${descSemISS[anexo]}</p><p>Caso a empresa exerça também atividade de serviços sujeita a ISS, apure essa parcela separadamente, selecionando o anexo de serviços correspondente.</p>`;
+        }
+
+        function renderizarResultado(d){
+            const resultado = document.getElementById('resultado');
+            resultado.classList.remove('hidden');
+            reanimar(resultado);
+
+            document.getElementById('detalhe-faixa').classList.remove('hidden');
+            document.getElementById('composicao-box').classList.toggle('hidden', d.semISS);
+            document.getElementById('icms-credito-box').classList.add('hidden');
+            document.getElementById('selo-label').textContent = 'ALÍQUOTA EFETIVA';
+            document.getElementById('selo-sub').textContent = 'ISS · NFS-e';
+            document.getElementById('comp-label-principal').innerHTML = '<i class="fa-solid fa-square text-[8px] mr-1" style="color:var(--teal)"></i>ISS';
+
+            document.getElementById('anexo-usado').textContent = d.tab.nome;
+
+            const fatorBox = document.getElementById('fator-r-box');
+            if (d.fatorR !== null) {
+                fatorBox.classList.remove('hidden');
+                document.getElementById('fator-r-valor').textContent = fmtPct(d.fatorR);
+                document.getElementById('fator-r-nota').innerHTML = d.notaFatorR;
+            } else {
+                fatorBox.classList.add('hidden');
+            }
+
+            document.getElementById('faixa-num').textContent = (d.faixa + 1) + 'ª';
+            document.getElementById('faixa-nominal').textContent = d.aliqNominal.toFixed(2).replace('.', ',') + '%';
+            document.getElementById('faixa-deducao').textContent = d.deducao ? fmtMoeda(d.deducao) : '—';
+
+            document.getElementById('aliquota-total').textContent = d.alqTotal.toFixed(6).replace('.', ',') + '%';
+            document.getElementById('aliquota-iss').textContent = d.alqISS > 0 ? d.alqISS.toFixed(6).replace('.', ',') + '%' : '0%';
+
+            if (!d.semISS && d.alqTotal > 0) {
+                const pctISSdoTotal = Math.min(100, (d.alqISS / d.alqTotal) * 100);
+                document.getElementById('comp-iss').style.width = pctISSdoTotal + '%';
+                document.getElementById('comp-outros').style.width = (100 - pctISSdoTotal) + '%';
+            }
+
+            const obs = [];
+            if (d.semISS) {
+                obs.push(`<p><i class="fa-solid fa-circle-info mr-1"></i>${d.tab.desc}</p>`);
+            }
+            if (d.notaFatorR) obs.push(`<p>${d.notaFatorR}</p>`);
+            if (d.notaCap) obs.push(`<p>${d.notaCap}</p>`);
+            if (d.notaSublimite) obs.push(`<p>${d.notaSublimite}</p>`);
+            if (obs.length === 0) obs.push('<p>Cálculo realizado conforme a Resolução CGSN nº 140/2018, vigente para os Anexos III, IV e V.</p>');
+            document.getElementById('observacoes').innerHTML = obs.join('');
+        }
+
+        function reanimar(el){
+            el.style.animation = 'none';
+            void el.offsetWidth;
+            el.style.animation = 'fadeSlideUp 0.45s ease forwards';
+        }
+
+        function limparTudo(){
+            document.getElementById('rbt12').value = '';
+            document.getElementById('folha').value = '';
+            document.getElementById('operacao').value = '';
+            limparErro('rbt12'); limparErro('folha'); limparErro('operacao');
+            document.getElementById('resultado').classList.add('hidden');
+        }
+
+        // ---------- Exemplos ----------
+        function carregarExemplo(tipo){
+            document.getElementById('anexo').value = tipo === 'III' ? 'III' : tipo;
+            onAnexoChange();
+            if (tipo === 'I') {
+                document.getElementById('rbt12').value = '500.000,00';
+                document.getElementById('operacao').value = '10.000,00';
+            } else if (tipo === 'II') {
+                document.getElementById('rbt12').value = '240.000,00';
+                document.getElementById('operacao').value = '8.500,00';
+            } else if (tipo === 'III') {
+                document.getElementById('rbt12').value = '900.000,00';
+                document.getElementById('folha').value = '180.000,00'; // Fator R = 20% -> migra para Anexo V
+            } else if (tipo === 'IV') {
+                document.getElementById('rbt12').value = '305.445,01';
+                document.getElementById('folha').value = '';
+            } else if (tipo === 'V') {
+                document.getElementById('rbt12').value = '400.000,00';
+                document.getElementById('folha').value = '';
+            }
+            setTimeout(() => calcularTudo(), 100);
+        }
+
+        // ---------- Inicialização ----------
+        function init(){
+            onAnexoChange();
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>
